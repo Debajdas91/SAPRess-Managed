@@ -1,0 +1,31 @@
+projection;
+//strict;
+use draft;
+
+define behavior for ZC_Certificate //alias <alias_name>
+{
+  use create;
+  use update;
+  use delete;
+
+  use action SendEmail;
+   use action newVersion;
+  use action releaseVersion;
+  use action archiveVersion;
+
+  use association _CertificateState { create; with draft ; }
+
+  use action Edit;
+  use action Activate;
+  use action Discard;
+  use action Prepare;
+  use action Resume;
+
+}
+
+define behavior for ZC_CertificateState //alias <alias_name>
+{
+  use delete;
+
+  use association _Certificate { with draft; }
+}
