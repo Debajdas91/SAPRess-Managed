@@ -1,0 +1,40 @@
+@EndUserText.label: 'Zertifikatsverwaltung Projection View'
+@AccessControl.authorizationCheck: #CHECK
+@Search.searchable: true
+@Metadata.allowExtensions: true
+define root view entity ZC_Certificate 
+  provider contract transactional_query
+  as projection on ZI_CERTIFICATE as Certificate
+{
+      key CertUuid,
+      
+      @ObjectModel.text.element: ['MaterialName']
+      @Consumption.valueHelpDefinition: [{entity: {name: 'I_MaterialText', element: 'Material'} }]
+      @Search.defaultSearchElement: true
+      @Consumption.semanticObject: 'Material'      
+      Material,
+ //     @ObjectModel.readOnly: true
+      Version,
+      @Search.defaultSearchElement: true
+ //     _MaterialText[Language = $session.system_language ].MaterialName as MaterialName,
+      _MaterialText.MaterialName as MaterialName,
+      CertStatus,
+      @Search.defaultSearchElement: true
+      @Consumption.valueHelpDefinition: [{entity: {name: 'ZI_Status_VH', element: 'Text'} }]
+      StatusText, 
+      CertCe,
+      CertGs,
+      CertFcc,
+      CertIso,      
+      CertTuev,
+      LocalLastChangedAt,
+      Criticality,
+  
+  @ObjectModel.virtualElementCalculatedBy: 'ABAP:ZCL_CERTI_SERVICE' 
+    virtual MaterialText: text150,      
+
+      /* Associations */
+     _CertificateState : redirected to composition child ZC_CertificateState,
+      
+      _MaterialText
+}
