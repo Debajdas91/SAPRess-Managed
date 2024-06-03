@@ -1,0 +1,39 @@
+@AbapCatalog.viewEnhancementCategory: [#NONE]
+@AccessControl.authorizationCheck: #CHECK
+@EndUserText.label: 'Certificate Interface View'
+@Metadata.ignorePropagatedAnnotations: true
+@ObjectModel.usageType:{
+    serviceQuality: #X,
+    sizeCategory: #S,
+    dataClass: #MIXED
+}
+define root view entity ZI_CERTIFICATE as select from zbca_certificate as CERTIFICATE
+ composition [0..*] of ZI_CertificateState as _CertificateState
+ association [0..1] to I_MaterialText      as _MaterialText on  $projection.Material = _MaterialText.Material  and
+                                                                  _MaterialText.Language = $session.system_language
+ association [0..1] to ZI_Status_VH      as _StatusText on $projection.CertStatus = _StatusText.Low
+ {
+    
+   key CERTIFICATE.cert_uuid as CertUuid,
+   CERTIFICATE.matnr as Material,
+   CERTIFICATE.version as Version,
+   _StatusText.Text      as StatusText,
+   CERTIFICATE.cert_status as CertStatus,
+   CERTIFICATE.cert_ce as CertCe,
+   CERTIFICATE.cert_gs as CertGs,
+   CERTIFICATE.cert_fcc as CertFcc,
+   CERTIFICATE.cert_iso as CertIso,
+   CERTIFICATE.cert_tuev as CertTuev,
+   CERTIFICATE.local_last_changed_at as LocalLastChangedAt,
+   
+     case 
+        when ( cert_status = '01' or cert_status = '04' ) // neu oder teilaktiv
+          then 2         //ICON_YELLOW_LIGHT
+        when ( cert_status = '03'  or cert_status is initial ) // inaktiv oder leer
+          then 1         //ICON_RED_LIGHT
+        else 3           //ICON_GREEN_LIGHT
+      end as Criticality,
+    // Make association public
+    _CertificateState,
+    _MaterialText
+}
