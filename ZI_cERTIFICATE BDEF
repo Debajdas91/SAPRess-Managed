@@ -1,0 +1,84 @@
+managed;
+//strict;
+with draft;
+
+
+define behavior for ZI_CERTIFICATE alias certificate
+implementation in class zbp_i_certificate1 unique
+
+persistent table zbca_certificate
+draft table ZBCD_cERTIFICATE
+lock master total etag LocalLastChangedAt
+authorization master ( instance )
+etag master LocalLastChangedAt
+{
+  create ;
+  update ( features : instance );
+  delete ( features : instance );
+
+  association _CertificateState { create; with draft; }
+
+  field( numbering : managed ,readonly ) CertUuid;
+field( mandatory )Material;
+  determination setInitialValues on modify { create; }
+  validation checkMaterial on save { field Material ; create ; update; }
+
+  action ( features : instance ) newVersion result [1] $self;
+  action ( features : instance ) releaseVersion result [1] $self;
+  action ( features : instance ) archiveVersion result [1] $self;
+   action ( features : instance ) SendEmail parameter zl2c_d_tender_Email_popup result [1] $self;
+
+
+  draft action Activate;
+  draft action Discard;
+  draft action Edit;
+  draft action Resume;
+  draft determine action Prepare;
+
+  mapping for zbca_certificate
+  {
+    CertUuid = cert_uuid ;
+    Material = matnr;
+    CertTuev = cert_tuev;
+    CertCe   = cert_ce;
+    CertFcc  = cert_fcc;
+    CertGs   = cert_gs;
+    CertIso  = cert_iso;
+    CertStatus = cert_status;
+    Version    = version;
+    LocalLastChangedAt = local_last_changed_at;
+
+  }
+
+
+}
+
+define behavior for ZI_CertificateState  alias CertificateState
+persistent table ZBCA_CERT_STATE
+draft table zbcd_cert_state
+lock dependent by _Certificate
+authorization dependent by _Certificate
+//etag master <field_name>
+{
+//  update;
+  delete;
+  field ( numbering : managed , readonly ) StateUUID ;
+  field ( readonly )CertUUID;
+
+  association _Certificate { with draft; }
+
+  mapping for zbca_cert_state
+  {
+  CertUUID = cert_uuid;
+  LastChangedAt = last_changed_at;
+  LastChangedBy = last_changed_by;
+  Material = matnr;
+  StateUUID = state_uuid;
+  Status = status;
+  StatusOld = status_old;
+  Version = version;
+  LocalLastChangedAt = local_last_changed_at;
+
+
+  }
+}
