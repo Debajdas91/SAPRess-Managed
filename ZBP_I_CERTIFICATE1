@@ -1,0 +1,165 @@
+CLASS lhc_certificate DEFINITION INHERITING FROM cl_abap_behavior_handler.
+  PRIVATE SECTION.
+
+    METHODS get_instance_authorizations FOR INSTANCE AUTHORIZATION
+      IMPORTING keys REQUEST requested_authorizations FOR certificate RESULT result.
+    METHODS setinitialvalues FOR DETERMINE ON MODIFY
+      IMPORTING keys FOR certificate~setinitialvalues.
+    METHODS get_features FOR FEATURES
+IMPORTING keys REQUEST requested_features FOR certificate RESULT result.
+   METHODS checkmaterial FOR VALIDATE ON SAVE
+      IMPORTING keys FOR certificate~checkmaterial.
+   METHODS sendemail FOR MODIFY
+     IMPORTING keys FOR ACTION certificate~sendemail RESULT result.
+   METHODS archiveversion FOR MODIFY
+     IMPORTING keys FOR ACTION certificate~archiveversion RESULT result.
+
+   METHODS newversion FOR MODIFY
+     IMPORTING keys FOR ACTION certificate~newversion RESULT result.
+
+   METHODS releaseversion FOR MODIFY
+     IMPORTING keys FOR ACTION certificate~releaseversion RESULT result.
+
+ENDCLASS.
+
+CLASS lhc_certificate IMPLEMENTATION.
+
+  METHOD get_instance_authorizations.
+  ENDMETHOD.
+
+  METHOD setinitialvalues.
+    DATA: lt_certificatestate      TYPE TABLE FOR CREATE zi_certificate\_certificatestate,
+          ls_certificatestate      LIKE LINE OF lt_certificatestate,
+          ls_certificatestatevalue LIKE LINE OF ls_certificatestate-%target.
+
+    READ ENTITIES OF zi_certificate IN LOCAL MODE ENTITY certificate
+         FIELDS ( certstatus ) WITH CORRESPONDING #( keys )
+         RESULT DATA(certificates).
+
+    IF certificates IS NOT INITIAL.
+*Modify entities
+      MODIFY ENTITIES OF zi_certificate IN LOCAL MODE ENTITY certificate
+             UPDATE
+             FIELDS ( version CertStatus  )
+             WITH VALUE #(  FOR certificate IN certificates ( %tky = certificate-%tky version = 00003 certstatus = '01' ) )
+
+             REPORTED DATA(ls_return).
+
+    ENDIF.
+
+    LOOP AT certificates INTO DATA(ls_certificate).
+
+      ls_certificatestate-%key = ls_certificate-%key.
+      ls_certificatestate-certuuid = ls_certificatestatevalue-certuuid = ls_certificate-certuuid.
+
+      ls_certificatestatevalue-status = '01'.
+      ls_certificatestatevalue-version = '01'.
+      ls_certificatestatevalue-%control-certuuid = if_abap_behv=>mk-on.
+      ls_certificatestatevalue-%control-status =   if_abap_behv=>mk-on.
+      ls_certificatestatevalue-%control-statusold = if_abap_behv=>mk-on.
+      ls_certificatestatevalue-%control-version =   if_abap_behv=>mk-on.
+      ls_certificatestatevalue-%control-lastchangedat = if_abap_behv=>mk-on.
+      ls_certificatestatevalue-%control-lastchangedby =  if_abap_behv=>mk-on.
+      APPEND ls_certificatestatevalue
+      TO ls_certificatestate-%target.
+      APPEND ls_certificatestate TO lt_certificatestate.
+
+      MODIFY ENTITIES OF zi_certificate IN LOCAL MODE
+      ENTITY certificate
+      CREATE BY \_certificatestate
+      FROM lt_certificatestate
+      REPORTED DATA(ls_return_ass)
+      MAPPED DATA(ls_mapped_ass)
+      FAILED DATA(ls_failed_ass).
+
+    ENDLOOP.
+
+
+  ENDMETHOD.
+
+  method get_features.
+*The return structure of the get_features method contains the key
+*and data of the requested instance
+    read entities of  zi_certificate in local mode entity certificate
+    all fields with corresponding #( keys )
+    result data(lt_certificates)
+    failed failed.
+
+        result = value #( for Certificate in lt_certificates
+                            ( %tky = Certificate-%tky ) ).
+
+
+  endmethod.
+METHOD checkMaterial .
+
+    read ENTITIES of zi_certificate in local mode entity certificate
+    all FIELDS WITH CORRESPONDING #( keys )
+    RESULT data(lt_Certificate).
+
+    if lt_certificate is not INITIAL.
+        loop at lt_certificate into data(ls_Certificate).
+        select single from mara FIELDS matnr where matnr = @ls_certificate-Material into @data(ls_mara).
+        if sy-subrc <> 0.
+* Clear state messages that might exist
+
+        append value #( %tky = ls_certificate-%tky
+                             %state_Area = 'MATERIAL_UNKNOWN' ) to reported-certificate.
+
+            append value #( %tky = ls_certificate-%tky ) to failed-certificate.
+            append value #( %tky = ls_certificate-%tky
+                             %MSG = NEW zcx_certificate(
+                                   severity = if_abap_behv_message=>severity-error
+                                   textid   = zcx_certificate=>material_unknown
+                                   material = ls_certificate-Material )
+
+                             %element-Material = if_abap_behv=>mk-on )
+
+                              to reported-certificate.
+*Line 105 not in book
+
+        endif.
+        endloop.
+    endif.
+
+
+  ENDMETHOD.
+
+
+  METHOD SendEmail.
+  types: begin of ty_certificate,
+            material type matnr,
+            matname  type maktx,
+            status   type VAL_TEXT,
+         end of ty_certificate.
+    data:lt_certificate type STANDARD TABLE OF ty_certificate.
+
+    READ ENTITIES OF zi_certificate IN LOCAL MODE ENTITY certificate
+         ALL FIELDS WITH CORRESPONDING #( keys )
+         RESULT DATA(lt_certificates).
+
+    loop at lt_certificates ASSIGNING FIELD-SYMBOL(<FS_certificateS>).
+    append INITIAL LINE TO lt_certificate ASSIGNING FIELD-SYMBOL(<FS_certificate>).
+    <fs_certificate>-material = <fs_certificates>-Material.
+    <fs_certificate>-matname  = <fs_certificates>-Material.
+    <fs_certificate>-status   = <fs_certificates>-StatusText.
+    endloop.
+
+
+
+
+
+   LOOP AT keys ASSIGNING FIELD-SYMBOL(<ls_key>).
+
+    ENDLOOP.
+  ENDMETHOD.
+
+  METHOD archiveVersion.
+  ENDMETHOD.
+
+  METHOD newVersion.
+  ENDMETHOD.
+
+  METHOD releaseVersion.
+  ENDMETHOD.
+
+ENDCLASS.
